@@ -1,25 +1,36 @@
 <template>
-  <div
-    class="app"
-    @dragover.prevent
-    @dragenter="draggingOver = true"
-    @dragleave="draggingOver = false"
-    @drop.prevent="onDrop"
-  >
-    <div class="dropZone" v-show="draggingOver" />
-  </div>
+  <DropZone class="app" @drop="this.onDrop">
+    <template v-if="generatedCode">
+      <div class="sourceView">
+        <SourceView :code="generatedCode" :mappings="generatedMappings" />
+      </div>
+    </template>
+  </DropZone>
 </template>
 
 <script>
-  import { SourceMapConsumer } from 'source-map'
-  import { fromSource, mapFileCommentRegex } from 'convert-source-map'
+  import DropZone from './DropZone'
+  import SourceView from './SourceView'
+  import extractSourceMap from '../utils/extractSourceMap'
+
+  import example from 'raw-loader!./example'
 
   export default {
 
+    components: { DropZone, SourceView },
+
     data() {
       return {
-        draggingOver: false,
+        generatedCode: undefined,
+        missingSourceMap: undefined,
+        mappings: undefined,
+        sourceList: undefined,
+        sourceContents: undefined,
       }
+    },
+
+    mounted() {
+      this.loadSuccess(null, example)
     },
 
     methods: {
@@ -39,21 +50,29 @@
       },
 
       loadSuccess(file, content) {
-        const consumer = new SourceMapConsumer(fromSource(content).sourcemap)
+        const { mappings, sources, sourceMapFile } = extractSourceMap(content)
 
-        const mappings = []
-        const sources = {}
+        this.missingSourceMap = sourceMapFile
 
-        consumer.eachMapping(map => {
-          mappings.push(map)
-          sources[map.source] = true
+        this.generatedCode = content
+        this.mappings = Object.freeze(mappings)
+
+        this.sourceContents = sources
+        this.sourceList = Object.freeze(Object.keys(sources))
+      },
+    },
+
+    computed: {
+
+      generatedMappings() {
+        console.log({
+          generatedCode: this.generatedCode,
+          missingSourceMap: this.missingSourceMap,
+          mappings: this.mappings,
+          sourceList: this.sourceList,
+          sourceContents: this.sourceContents,
         })
-
-        for (const src of Object.keys(sources)) {
-          sources[src] = consumer.sourceContentFor(src, true)
-        }
-
-        console.log(sources)
+        return []
       },
     },
   }
@@ -72,16 +91,15 @@
 </style>
 
 <style scoped>
-  .dropZone {
-    height: 100%;
-    padding: 5px;
-    pointer-events: none;
+  .app {
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
   }
-  .dropZone:after {
-    content: '';
-    display: block;
-    height: 100%;
-    border: 2px dashed gray;
-    box-sizing: border-box;
+
+  .sourceView {
+    width: 100%;
   }
 </style>
