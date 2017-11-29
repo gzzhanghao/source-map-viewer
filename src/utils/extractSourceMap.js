@@ -4,20 +4,25 @@ import { SourceMapConsumer } from 'source-map'
 export default function extractMappings(content) {
   const sourceMap = fromSource(content)
 
-  const mappings = []
-  const sources = {}
+  const originalMappings = []
+  const generatedMappings = []
+  const sourceContents = {}
 
   if (!sourceMap) {
     const match = mapFileCommentRegex.exec(content)
-    return { mappings, sources, sourceMapFile: match && (match[1] || match[2]) }
+    return { generatedMappings, originalMappings, sourceContents, sourceMapFile: match && (match[1] || match[2]) }
   }
 
   const consumer = new SourceMapConsumer(sourceMap.sourcemap)
 
   consumer.eachMapping(map => {
-    sources[map.source] = consumer.sourceContentFor(map.source, true)
-    mappings.push(map)
+    sourceContents[map.source] = consumer.sourceContentFor(map.source, true)
+    generatedMappings.push(map)
   })
 
-  return { mappings, sources }
+  consumer.eachMapping(map => {
+    originalMappings.push(map)
+  }, null, SourceMapConsumer.ORIGINAL_ORDER)
+
+  return { generatedMappings, originalMappings, sourceContents }
 }

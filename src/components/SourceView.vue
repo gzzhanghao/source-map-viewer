@@ -1,19 +1,27 @@
 <template>
-  <div class="container">
-    <table>
-      <tbody>
-        <tr class="line" v-for="(line, lineNumber) in lines">
+  <table>
+    <tbody>
+      <tr class="line" v-for="(line, lineNumber) in content">
+        <template v-if="showLineNumber">
           <td class="lineNumber" :data-line-number="lineNumber + 1"></td>
-          <td class="lineContent">
-            <span class="column" v-for="column in line">
-              <template>{{column.content}}</template>
-            </span>
-            <br/>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+        </template>
+        <td class="lineContent">
+          <span
+            class="column"
+            v-for="chunk in line"
+            :class="{ empty: !chunk.content }"
+            :title="chunk.names.filter(v => v).join(',')"
+            :data-origin-source="chunk.source"
+            :data-origin-line="chunk.line"
+            :data-origin-column="chunk.column"
+          >
+            <template>{{chunk.content}}</template>
+          </span>
+          <br/>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </template>
 
 <script>
@@ -22,28 +30,37 @@
   export default {
 
     props: {
-      code: { type: String, required: true },
-      mappings: { type: Array, required: true },
+      content: { type: Array, required: true },
+      showLineNumber: { type: Boolean, default: false },
     },
 
-    computed: {
+    mounted() {
+      this.onMouseMove = this.onMouseMove.bind(this)
+      window.addEventListener('mouseover', this.onMouseMove)
+    },
 
-      lines() {
-        const lines = this.code.split(/\r?\n/g).map(content => [{ content }])
+    beforeDestroy() {
+      window.removeEventListener('mouseover', this.onMouseMove)
+    },
 
-        return lines
+    methods: {
+
+      onMouseMove(event) {
+        const source = event.target.getAttribute('data-origin-source')
+        const line = event.target.getAttribute('data-origin-line')
+        const column = event.target.getAttribute('data-origin-column')
+
+        if (line && column) {
+          this.$emit('hover', { source, line: parseInt(line), column: parseInt(column) })
+        }
       },
     },
   }
 </script>
 
 <style scoped>
-  .container {
-    overflow: auto;
-  }
   .line {
     font-size: 12px;
-    line-height: 20px;
     white-space: pre;
     font-family: monospace;
     color: #222;
@@ -57,5 +74,8 @@
   }
   .lineNumber:before {
     content: attr(data-line-number);
+  }
+  .column[data-origin-source] {
+    border-left: 2px solid lightgray;
   }
 </style>
