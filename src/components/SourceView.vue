@@ -1,7 +1,7 @@
 <template>
   <table>
     <tbody ref="lines">
-      <tr :class="$.line" v-for="(line, lineNumber) in content">
+      <tr :class="$.line" v-for="(line, lineNumber) in content" :data-line="lineNumber + 1">
         <template v-if="showLineNumber">
           <td :class="$.lineNumber" :data-line-number="lineNumber + 1"></td>
         </template>

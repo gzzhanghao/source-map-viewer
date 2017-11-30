@@ -164,7 +164,12 @@
       },
 
       onSelectSource(chunk) {
-        this.scrollToLine('generatedView', uniq(map(filter(this.generatedMappings, { source: chunk.source, originalLine: chunk.line, originalColumn: chunk.column }), 'generatedLine'))[0])
+        const targetMappings = filter(this.generatedMappings, {
+          source: chunk.source,
+          originalLine: chunk.line,
+          originalColumn: chunk.column,
+        })
+        this.scrollToLine('mappingsView', uniq(map(targetMappings, 'generatedLine'))[0])
       },
 
       scrollToLine(target, line) {
@@ -172,7 +177,7 @@
         if (!view) {
           return
         }
-        const lineElement = view.querySelector(`[data-line-number="${line}"]`)
+        const lineElement = view.querySelector(`[data-line="${line}"]`)
         if (lineElement) {
           lineElement.scrollIntoView({ behavior: 'instant' })
         }
