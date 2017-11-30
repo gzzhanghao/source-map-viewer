@@ -1,6 +1,6 @@
 <template>
   <table>
-    <tbody>
+    <tbody ref="lines">
       <tr class="line" v-for="(line, lineNumber) in content">
         <template v-if="showLineNumber">
           <td class="lineNumber" :data-line-number="lineNumber + 1"></td>
@@ -14,6 +14,7 @@
             :data-origin-source="chunk.source"
             :data-origin-line="chunk.line"
             :data-origin-column="chunk.column"
+            @click="onSelectChunk(chunk)"
           >
             <template>{{chunk.content}}</template>
           </span>
@@ -25,6 +26,7 @@
 </template>
 
 <script>
+  import debounce from 'lodash/debounce'
   import SourceMapConsumer from 'source-map'
 
   export default {
@@ -34,8 +36,14 @@
       showLineNumber: { type: Boolean, default: false },
     },
 
+    data() {
+      return {
+        viewport: { top: 0, left: 0, width: 0, height: 0 },
+      }
+    },
+
     mounted() {
-      this.onMouseMove = this.onMouseMove.bind(this)
+      this.onMouseMove = debounce(this.onMouseMove).bind(this)
       window.addEventListener('mouseover', this.onMouseMove)
     },
 
@@ -54,11 +62,20 @@
           this.$emit('hover', { source, line: parseInt(line), column: parseInt(column) })
         }
       },
+
+      onSelectChunk(chunk) {
+        if (chunk.source) {
+          this.$emit('select', chunk)
+        }
+      },
     },
   }
 </script>
 
 <style scoped>
+  .container {
+    overflow: auto;
+  }
   .line {
     font-size: 12px;
     white-space: pre;
@@ -77,5 +94,7 @@
   }
   .column[data-origin-source] {
     border-left: 2px solid lightgray;
+    border-radius: 2px;
+    cursor: pointer;
   }
 </style>

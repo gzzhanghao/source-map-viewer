@@ -1,3 +1,4 @@
+const webpack = require('webpack')
 const path = require('path')
 
 module.exports = {
@@ -25,7 +26,7 @@ module.exports = {
     ],
   },
 
-  devtool: 'eval-source-map',
+  devtool: '#source-map',
 
   resolve: {
     extensions: ['.js', '.vue'],
@@ -33,5 +34,13 @@ module.exports = {
 
   externals: {
     'fs': 'null',
+    'vue': 'Vue',
   },
+
+  plugins: [
+    new webpack.optimize.CommonsChunkPlugin({
+      name: 'vendor',
+      minChunks: module => module.context && module.context.includes('node_modules'),
+    }),
+  ]
 }
