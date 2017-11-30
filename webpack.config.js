@@ -34,7 +34,6 @@ module.exports = {
 
   externals: {
     'fs': 'null',
-    'vue': 'Vue',
   },
 
   plugins: [

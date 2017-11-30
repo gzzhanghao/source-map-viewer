@@ -1,20 +1,50 @@
 <template>
-  <div class="app">
-    <DropZone ref="generatedView" class="frame" @drop="onDropGenerated" @scroll.native="onScrollSync($event, 'mappingsView')">
-      <SourceView v-if="generatedView" :content="generatedView" @hover="onHover" @select="onSelectGenerated" showLineNumber />
-    </DropZone>
-    <DropZone ref="mappingsView" class="frame" @drop="onDropSourceMap" @scroll.native="onScrollSync($event, 'generatedView')">
-      <SourceView v-if="mappingsView" :content="mappingsView" @hover="onHover" @select="onSelectGenerated" />
-    </DropZone>
-    <div class="frame" v-if="sources && sources.length">
-      <ul>
-        <li v-for="(source, index) in sources" @click="selectedSource = index">
-          {{source.path}}
-        </li>
-      </ul>
-      <DropZone ref="selectedView" @drop="onDropOriginal">
-        <SourceView v-if="selectedView" showLineNumber :content="selectedView" @hover="onHover" @select="onSelectSource" />
-      </DropZone>
+  <div :class="$.app">
+    <MenuView />
+    <div :class="$.container">
+      <div
+        ref="generatedView"
+        :class="$.frame"
+        @dragover.prevent
+        @drop.prevent="onDrop($event, readGenerated)"
+        @scroll="onScrollSync($event, 'mappingsView')"
+      >
+        <SourceView
+          v-if="generatedView"
+          showLineNumber
+          :content="generatedView"
+          @hover="onHover"
+          @select="onSelectGenerated"
+        />
+      </div>
+      <div
+        ref="mappingsView"
+        :class="$.frame"
+        @dragover.prevent
+        @drop.prevent="onDrop($event, readSourceMap)"
+        @scroll="onScrollSync($event, 'generatedView')"
+      >
+        <SourceView
+          v-if="mappingsView"
+          :content="mappingsView"
+          @hover="onHover"
+          @select="onSelectGenerated"
+        />
+      </div>
+      <div
+        ref="selectedView"
+        :class="$.frame"
+        @dragover.prevent
+        @drop.prevent="onDrop($event, readOriginal)"
+      >
+        <SourceView
+          v-if="selectedView"
+          showLineNumber
+          :content="selectedView"
+          @hover="onHover"
+          @select="onSelectSource"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -28,7 +58,7 @@
   import isEqual from 'lodash/isEqual'
   import sortedIndexBy from 'lodash/sortedIndexBy'
 
-  import DropZone from './DropZone'
+  import MenuView from './MenuView'
   import SourceView from './SourceView'
 
   import readAsText from '../utils/readAsText'
@@ -40,7 +70,7 @@
 
   export default {
 
-    components: { DropZone, SourceView },
+    components: { SourceView, MenuView },
 
     data() {
       return {
@@ -62,7 +92,13 @@
       this.highlightStyleTag = document.createElement('style')
       document.head.appendChild(this.highlightStyleTag)
 
-      this.readExample()
+      this.generatedContent = example
+      const sourceMap = extractSourceMap(this.generatedContent)
+      if (this.generatedMappings && sourceMap.sourceMapFile) {
+        return
+      }
+      this.setSourceMap(sourceMap)
+      this.selectedSource = 0
     },
 
     beforeDestroy() {
@@ -71,19 +107,8 @@
 
     methods: {
 
-      onDropGenerated(event) {
-        this.readFiles(event.dataTransfer.files, this.readGenerated)
-      },
-
-      onDropSourceMap(event) {
-        this.readFiles(event.dataTransfer.files, this.readSourceMap)
-      },
-
-      onDropOriginal(event) {
-        this.readFiles(event.dataTransfer.files, this.readOriginal)
-      },
-
-      readFiles(files, defaultHandler) {
+      onDrop(event, defaultHandler) {
+        const { files } = event.dataTransfer
         if (!files.length) {
           return
         }
@@ -92,16 +117,7 @@
           return
         }
         console.log(files)
-      },
-
-      readExample() {
-        this.generatedContent = example
-        const sourceMap = extractSourceMap(this.generatedContent)
-        if (this.generatedMappings && sourceMap.sourceMapFile) {
-          return
-        }
-        this.setSourceMap(sourceMap)
-        this.selectedSource = 0
+        // @todo handle multiple files
       },
 
       async readGenerated(file) {
@@ -156,7 +172,7 @@
         if (!view) {
           return
         }
-        const lineElement = view.$el.querySelector(`[data-line-number="${line}"]`)
+        const lineElement = view.querySelector(`[data-line-number="${line}"]`)
         if (lineElement) {
           lineElement.scrollIntoView({ behavior: 'instant' })
         }
@@ -166,12 +182,12 @@
         if (!this.$refs[target]) {
           return
         }
-        const { $el } = this.$refs[target]
-        if (!$el || event.target.scrollTop === this.tmpScrollTop) {
+        const el = this.$refs[target]
+        if (!el || event.target.scrollTop === this.lastScrollTopSync) {
           return
         }
-        $el.scrollTop = event.target.scrollTop
-        this.tmpScrollTop = $el.scrollTop
+        el.scrollTop = event.target.scrollTop
+        this.lastScrollTopSync = el.scrollTop
       },
     },
 
@@ -224,6 +240,10 @@
 
         const lines = []
 
+        if (this.generatedContent) {
+          lines.length = this.generatedContent.split(/\r?\n/g).length
+        }
+
         for (const mapping of this.generatedMappings) {
           const lineNumber = mapping.generatedLine - 1
 
@@ -231,8 +251,14 @@
             lines[lineNumber] = []
           }
 
+          let source = this.sources[mapping.source]
+
+          if (source) {
+            source = source.path
+          }
+
           lines[lineNumber].push({
-            names: [mapping.source, mapping.name],
+            names: [source, mapping.name],
             source: mapping.source,
             line: mapping.originalLine,
             column: mapping.originalColumn,
@@ -246,6 +272,11 @@
       },
 
       selectedView() {
+
+        if (!this.sources) {
+          return
+        }
+
         const source = this.sources[this.selectedSource]
 
         if (!source.content) {
@@ -299,13 +330,13 @@
     watch: {
 
       highlightSource(newSource) {
-        const columnSelector = cssAttrSelector({
+        const chunkSelector = cssAttrSelector({
           'data-origin-source': newSource.source,
           'data-origin-line': newSource.line,
           'data-origin-column': newSource.column,
         })
         this.highlightStyleTag.innerHTML = `
-          ${columnSelector} {
+          ${chunkSelector} {
             color: white;
             background: black;
             border-left-color: black !important;
@@ -318,8 +349,7 @@
 
 <style>
   html,
-  body,
-  .app {
+  body {
     height: 100%;
     margin: 0;
   }
@@ -330,17 +360,34 @@
   }
 </style>
 
-<style scoped>
+<style module="$">
   .app {
+    height: 100%;
+    position: relative;
     width: 100%;
-    display: flex;
   }
-  .app > * {
-    width: 1px;
+  .container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+  }
+  .container > * {
     flex: 1 auto;
+    width: 1px;
   }
   .frame {
-    overflow: auto;
     height: 100%;
+    overflow: auto;
+  }
+  .frame::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .frame::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background: #bbb;
+  }
+  .frame::-webkit-scrollbar-track {
+    background: #eee;
   }
 </style>

@@ -1,15 +1,14 @@
 <template>
   <table>
     <tbody ref="lines">
-      <tr class="line" v-for="(line, lineNumber) in content">
+      <tr :class="$.line" v-for="(line, lineNumber) in content">
         <template v-if="showLineNumber">
-          <td class="lineNumber" :data-line-number="lineNumber + 1"></td>
+          <td :class="$.lineNumber" :data-line-number="lineNumber + 1"></td>
         </template>
-        <td class="lineContent">
+        <td :class="$.lineContent">
           <span
-            class="column"
             v-for="chunk in line"
-            :class="{ empty: !chunk.content }"
+            :class="[$.chunk, { [$.empty]: !chunk.content }]"
             :title="chunk.names.filter(v => v).join(',')"
             :data-origin-source="chunk.source"
             :data-origin-line="chunk.line"
@@ -17,8 +16,7 @@
             @click="onSelectChunk(chunk)"
           >
             <template>{{chunk.content}}</template>
-          </span>
-          <br/>
+          </span><br/>
         </td>
       </tr>
     </tbody>
@@ -64,7 +62,7 @@
       },
 
       onSelectChunk(chunk) {
-        if (chunk.source) {
+        if (chunk.source != null) {
           this.$emit('select', chunk)
         }
       },
@@ -72,7 +70,7 @@
   }
 </script>
 
-<style scoped>
+<style module="$">
   .container {
     overflow: auto;
   }
@@ -92,7 +90,7 @@
   .lineNumber:before {
     content: attr(data-line-number);
   }
-  .column[data-origin-source] {
+  .chunk[data-origin-source] {
     border-left: 2px solid lightgray;
     border-radius: 2px;
     cursor: pointer;
