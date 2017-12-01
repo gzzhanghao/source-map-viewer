@@ -2,49 +2,40 @@
   <div :class="$.app">
     <MenuView />
     <div :class="$.container">
-      <div
+      <SourceView
         ref="generatedView"
-        :class="$.frame"
-        @dragover.prevent
-        @drop.prevent="onDrop($event, readGenerated)"
-        @scroll="onScrollSync($event, 'mappingsView')"
-      >
-        <SourceView
-          v-if="generatedView"
-          showLineNumber
-          :content="generatedView"
-          @hover="onHover"
-          @select="onSelectGenerated"
-        />
-      </div>
-      <div
+        v-if="generatedView"
+        showLineNumber
+        :class="$.sourceView"
+        :content="generatedView"
+        @hover="onHover"
+        @select="onSelectGenerated"
+        @scroll.native="onScrollSync($event, 'mappingsView')"
+        @dragover.native.prevent
+        @drop.native.prevent="onDrop($event, readGenerated)"
+      />
+      <SourceView
         ref="mappingsView"
-        :class="$.frame"
-        @dragover.prevent
-        @drop.prevent="onDrop($event, readSourceMap)"
-        @scroll="onScrollSync($event, 'generatedView')"
-      >
-        <SourceView
-          v-if="mappingsView"
-          :content="mappingsView"
-          @hover="onHover"
-          @select="onSelectGenerated"
-        />
-      </div>
-      <div
+        v-if="mappingsView"
+        :class="$.sourceView"
+        :content="mappingsView"
+        @hover="onHover"
+        @select="onSelectGenerated"
+        @scroll.native="onScrollSync($event, 'generatedView')"
+        @dragover.native.prevent
+        @drop.native.prevent="onDrop($event, readSourceMap)"
+      />
+      <SourceView
         ref="selectedView"
-        :class="$.frame"
-        @dragover.prevent
-        @drop.prevent="onDrop($event, readOriginal)"
-      >
-        <SourceView
-          v-if="selectedView"
-          showLineNumber
-          :content="selectedView"
-          @hover="onHover"
-          @select="onSelectSource"
-        />
-      </div>
+        v-if="selectedView"
+        showLineNumber
+        :class="$.sourceView"
+        :content="selectedView"
+        @hover="onHover"
+        @select="onSelectSource"
+        @dragover.native.prevent
+        @drop.native.prevent="onDrop($event, readOriginal)"
+      />
     </div>
   </div>
 </template>
@@ -85,6 +76,8 @@
 
         highlightSource: undefined,
         selectedSource: undefined,
+
+        dragging: undefined,
       }
     },
 
@@ -174,12 +167,8 @@
 
       scrollToLine(target, line) {
         const view = this.$refs[target]
-        if (!view) {
-          return
-        }
-        const lineElement = view.querySelector(`[data-line="${line}"]`)
-        if (lineElement) {
-          lineElement.scrollIntoView({ behavior: 'instant' })
+        if (view) {
+          view.scrollToLine(line)
         }
       },
 
@@ -187,12 +176,12 @@
         if (!this.$refs[target]) {
           return
         }
-        const el = this.$refs[target]
-        if (!el || event.target.scrollTop === this.lastScrollTopSync) {
+        const { $el } = this.$refs[target]
+        if (!$el || event.target.scrollTop === this.lastScrollTopSync) {
           return
         }
-        el.scrollTop = event.target.scrollTop
-        this.lastScrollTopSync = el.scrollTop
+        $el.scrollTop = event.target.scrollTop
+        this.lastScrollTopSync = $el.scrollTop
       },
     },
 
@@ -380,19 +369,7 @@
     flex: 1 auto;
     width: 1px;
   }
-  .frame {
+  .sourceView {
     height: 100%;
-    overflow: auto;
-  }
-  .frame::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  .frame::-webkit-scrollbar-thumb {
-    border-radius: 3px;
-    background: #bbb;
-  }
-  .frame::-webkit-scrollbar-track {
-    background: #eee;
   }
 </style>
