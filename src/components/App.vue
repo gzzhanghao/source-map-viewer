@@ -1,42 +1,61 @@
 <template>
   <div :class="$.app">
-    <MenuView />
     <div :class="$.container">
-      <SourceView
-        ref="generatedView"
-        v-if="generatedView"
-        showLineNumber
-        :class="$.sourceView"
-        :content="generatedView"
-        @hover="onHover"
-        @select="onSelectGenerated"
-        @scroll.native="onScrollSync($event, 'mappingsView')"
-        @dragover.native.prevent
-        @drop.native.prevent="onDrop($event, readGenerated)"
-      />
-      <SourceView
-        ref="mappingsView"
-        v-if="mappingsView"
-        :class="$.sourceView"
-        :content="mappingsView"
-        @hover="onHover"
-        @select="onSelectGenerated"
-        @scroll.native="onScrollSync($event, 'generatedView')"
-        @dragover.native.prevent
-        @drop.native.prevent="onDrop($event, readSourceMap)"
-      />
-      <SourceView
-        ref="selectedView"
-        v-if="selectedView"
-        showLineNumber
-        :class="$.sourceView"
-        :content="selectedView"
-        @hover="onHover"
-        @select="onSelectSource"
-        @dragover.native.prevent
-        @drop.native.prevent="onDrop($event, readOriginal)"
-      />
+      <div
+        @dragover.prevent
+        @drop.prevent="onDrop($event, readGenerated)"
+      >
+        <SourceView
+          ref="generatedView"
+          v-if="generatedView"
+          showLineNumber
+          :class="$.sourceView"
+          :content="generatedView"
+          @hover="onHover"
+          @select="onSelectGenerated"
+          @scroll.native="onScrollSync($event, 'mappingsView')"
+        />
+        <div v-else>
+          Drop generated file here
+        </div>
+      </div>
+      <div
+        @dragover.prevent
+        @drop.prevent="onDrop($event, readSourceMap)"
+      >
+        <SourceView
+          ref="mappingsView"
+          v-if="mappingsView"
+          :class="$.sourceView"
+          :content="mappingsView"
+          @hover="onHover"
+          @select="onSelectGenerated"
+          @scroll.native="onScrollSync($event, 'generatedView')"
+        />
+        <div v-else>
+          Drop {{missingSourceMap || 'sourcemap file'}} here
+        </div>
+      </div>
+      <div
+        v-if="sources && sources[selectedSource]"
+        @dragover.prevent
+        @drop.prevent="onDrop($event, readOriginal)"
+      >
+        <div>
+          {{sources[selectedSource].path}}
+        </div>
+        <SourceView
+          ref="selectedView"
+          v-if="selectedView"
+          showLineNumber
+          :class="$.sourceView"
+          :content="selectedView"
+          @hover="onHover"
+          @select="onSelectSource"
+        />
+      </div>
     </div>
+    <MenuView />
   </div>
 </template>
 
@@ -84,14 +103,6 @@
     mounted() {
       this.highlightStyleTag = document.createElement('style')
       document.head.appendChild(this.highlightStyleTag)
-
-      this.generatedContent = example
-      const sourceMap = extractSourceMap(this.generatedContent)
-      if (this.generatedMappings && sourceMap.sourceMapFile) {
-        return
-      }
-      this.setSourceMap(sourceMap)
-      this.selectedSource = 0
     },
 
     beforeDestroy() {
@@ -120,7 +131,7 @@
           return
         }
         this.setSourceMap(sourceMap)
-        this.selectedSource = 0
+        this.selectedSource = this.sources && 0
       },
 
       async readSourceMap(file) {

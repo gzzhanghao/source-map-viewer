@@ -29,8 +29,10 @@
 <style module="$">
   .container {
     position: fixed;
+    top: 0;
+    left: 0;
   }
   .button:before {
-    content: 'menu';
+    /*content: 'menu';*/
   }
 </style>

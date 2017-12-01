@@ -76,7 +76,10 @@
       window.removeEventListener('mouseover', this.onMouseMove)
       window.removeEventListener('mousemove', this.onDragMove)
       window.removeEventListener('mouseup', this.onDragEnd)
-      this.$refs.resizeDetector.contentWindow.removeEventListener('resize', this.onViewportUpdate)
+
+      if (this.$refs.resizeDetector.contentWindow) {
+        this.$refs.resizeDetector.contentWindow.removeEventListener('resize', this.onViewportUpdate)
+      }
     },
 
     methods: {
@@ -166,11 +169,11 @@
     cursor: -webkit-grabbing;
   }
   .container::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 5px;
+    height: 5px;
   }
   .container::-webkit-scrollbar-thumb {
-    border-radius: 4px;
+    border-radius: 5px;
     background: #bbb;
   }
   .container::-webkit-scrollbar-track {
