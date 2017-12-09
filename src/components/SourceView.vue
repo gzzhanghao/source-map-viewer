@@ -58,7 +58,7 @@
       this.onMouseMove = debounce(this.onMouseMove).bind(this)
       this.onDragEnd = debounce(this.onDragEnd).bind(this)
       this.onDragMove = debounce(this.onDragMove).bind(this)
-      this.onViewportUpdate = debounce(this.onViewportUpdate).bind(this)
+      this.onViewportUpdate = this.onViewportUpdate.bind(this)
 
       this.onViewportUpdate()
 
@@ -142,7 +142,7 @@
       },
 
       displayLines() {
-        return this.content.slice(this.displayRange[0], this.displayRange[0] + this.displayRange[1] + 1)
+        return this.content.slice(this.displayRange[0], this.displayRange[0] + this.displayRange[1] + 2)
       },
 
       translateY() {
