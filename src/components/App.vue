@@ -76,8 +76,6 @@
   import extractMappings from '../utils/extractMappings'
   import extractSourceMap from '../utils/extractSourceMap'
 
-  import example from 'raw-loader!../example'
-
   export default {
 
     components: { SourceView, MenuView },
