@@ -12,5 +12,10 @@ export default function extractMappings(sourceMap) {
     sources.push({ path: sourceMap.sources[i], content: sourcesContent[i] })
   }
 
-  return { sources, generatedMappings: parser.__generatedMappings, originalMappings: parser.__originalMappings }
+  return {
+    sources,
+    generatedFile: sourceMap.file,
+    generatedMappings: parser.__generatedMappings,
+    originalMappings: parser.__originalMappings,
+  }
 }

@@ -16,7 +16,7 @@
           @scroll.native="onScrollSync($event, 'mappingsView')"
         />
         <div v-else>
-          Drop generated file here
+          Drop {{missingGenerated || 'generated file'}} here
         </div>
       </div>
       <div
@@ -41,9 +41,6 @@
         @dragover.prevent
         @drop.prevent="onDrop($event, readOriginal)"
       >
-        <div>
-          {{sources[selectedSource].path}}
-        </div>
         <SourceView
           ref="selectedView"
           v-if="selectedView"
@@ -84,6 +81,8 @@
       return {
 
         generatedContent: undefined,
+
+        missingGenerated: undefined,
         missingSourceMap: undefined,
 
         originalMappings: undefined,
@@ -144,6 +143,7 @@
       },
 
       setSourceMap(sourceMap) {
+        this.missingGenerated = sourceMap.generatedFile
         this.missingSourceMap = sourceMap.sourceMapFile
 
         this.sources = sourceMap.sources
@@ -275,11 +275,6 @@
       },
 
       selectedView() {
-
-        if (!this.sources) {
-          return
-        }
-
         const source = this.sources[this.selectedSource]
 
         if (!source.content) {
