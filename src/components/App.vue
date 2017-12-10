@@ -117,8 +117,13 @@
           defaultHandler.call(this, files[0])
           return
         }
-        console.log(files)
-        // @todo handle multiple files
+        if (files[0].name.endsWith('.map') || files[0].name.endsWith('.json')) {
+          this.readSourceMap(files[0])
+          this.readGenerated(files[1])
+        } else {
+          this.readSourceMap(files[1])
+          this.readGenerated(files[0])
+        }
       },
 
       async readGenerated(file) {
