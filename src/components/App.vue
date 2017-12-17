@@ -2,6 +2,8 @@
   <div :class="$.app">
     <div :class="$.container">
       <div
+        v-if="sourceViews.generated"
+        :class="$.sourceViewContainer"
         @dragover.prevent
         @drop.prevent="onDrop($event, readGenerated)"
       >
@@ -15,11 +17,15 @@
           @select="onSelectGenerated"
           @scroll.native="onScrollSync($event, 'mappingsView')"
         />
-        <div v-else>
-          Drop {{missingGenerated || 'generated file'}} here
+        <div :class="$.placeholderContainer" v-else>
+          <div :class="$.placeholder">
+            <span>Drop {{missingGenerated || 'generated file'}} here</span>
+          </div>
         </div>
       </div>
       <div
+        v-if="sourceViews.sourceMap"
+        :class="$.sourceViewContainer"
         @dragover.prevent
         @drop.prevent="onDrop($event, readSourceMap)"
       >
@@ -32,12 +38,15 @@
           @select="onSelectGenerated"
           @scroll.native="onScrollSync($event, 'generatedView')"
         />
-        <div v-else>
-          Drop {{missingSourceMap || 'sourcemap file'}} here
+        <div :class="$.placeholderContainer" v-else>
+          <div :class="$.placeholder">
+            <span>Drop {{missingSourceMap || 'sourcemap file'}} here</span>
+          </div>
         </div>
       </div>
       <div
-        v-if="sources && sources[selectedSource]"
+        v-if="sources && selectedSource != null && sourceViews.original"
+        :class="$.sourceViewContainer"
         @dragover.prevent
         @drop.prevent="onDrop($event, readOriginal)"
       >
@@ -50,9 +59,18 @@
           @hover="onHover"
           @select="onSelectSource"
         />
+        <div :class="$.placeholderContainer" v-else>
+          <div :class="$.placeholder">
+            <span>Drop {{missingSourceMap || 'sourcemap file'}} here</span>
+          </div>
+        </div>
       </div>
     </div>
-    <MenuView />
+    <MenuView>
+      <a href="javascript:" @click="toggleView('generated')">Generated</a>
+      <a href="javascript:" @click="toggleView('sourceMap')">SourceMap</a>
+      <a href="javascript:" @click="toggleView('original')">Original</a>
+    </MenuView>
   </div>
 </template>
 
@@ -93,7 +111,7 @@
         highlightSource: undefined,
         selectedSource: undefined,
 
-        dragging: undefined,
+        sourceViews: { generated: true, sourceMap: true, original: true },
       }
     },
 
@@ -196,6 +214,10 @@
         }
         $el.scrollTop = event.target.scrollTop
         this.lastScrollTopSync = $el.scrollTop
+      },
+
+      toggleView(type) {
+        this.sourceViews[type] = !this.sourceViews[type]
       },
     },
 
@@ -377,6 +399,24 @@
   .container > * {
     flex: 1 auto;
     width: 1px;
+  }
+  .placeholderContainer {
+    height: 100%;
+    padding: 5px;
+  }
+  .placeholder {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    font-size: 2em;
+    font-family: sans-serif;
+    border: 2px dashed gray;
+  }
+  .placeholder span {
+    display: inline-block;
+    width: 100%;
+    color: gray;
+    text-align: center;
   }
   .sourceView {
     height: 100%;

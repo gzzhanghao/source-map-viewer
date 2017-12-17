@@ -36,6 +36,8 @@
   import debounce from 'lodash/debounce'
   import SourceMapConsumer from 'source-map'
 
+  const LINE_PADDING = 10
+
   export default {
 
     props: {
@@ -136,8 +138,8 @@
 
       displayRange() {
         return [
-          Math.max(0, Math.floor((this.viewport[0] - 2) / this.LINE_HEIGHT)),
-          Math.floor(this.viewport[1] / this.LINE_HEIGHT),
+          Math.max(0, Math.floor((this.viewport[0] - 2) / this.LINE_HEIGHT) - LINE_PADDING),
+          Math.floor(this.viewport[1] / this.LINE_HEIGHT) + 2 * LINE_PADDING,
         ]
       },
 
