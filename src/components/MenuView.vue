@@ -61,7 +61,7 @@
 
   .button {
     position: fixed;
-    top: 8px;
+    top: 12px;
     right: 12px;
     width: 16px;
     height: 12px;

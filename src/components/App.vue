@@ -18,6 +18,7 @@
           @scroll.native="onScrollSync($event, 'mappingsView')"
         />
         <div :class="$.placeholderContainer" v-else>
+          <input :class="$.filePicker" type="file" multiple @change="onPickFiles($event, readGenerated)" />
           <div :class="$.placeholder">
             <div :class="$.placeholderText">Drop {{missingGenerated || 'generated file'}} here</div>
           </div>
@@ -39,6 +40,7 @@
           @scroll.native="onScrollSync($event, 'generatedView')"
         />
         <div :class="$.placeholderContainer" v-else>
+          <input :class="$.filePicker" type="file" multiple @change="onPickFiles($event, readSourceMap)" />
           <div :class="$.placeholder">
             <div :class="$.placeholderText">Drop {{missingSourceMap || 'sourcemap file'}} here</div>
           </div>
@@ -60,8 +62,9 @@
           @select="onSelectSource"
         />
         <div :class="$.placeholderContainer" v-else>
+          <input :class="$.filePicker" type="file" multiple @change="onPickFiles($event, readOriginal)" />
           <div :class="$.placeholder">
-            <div :class="$.placeholderText">Drop {{selectedSourceName}} here</div>
+            <div :class="$.placeholderText">Drop {{path.basename(sources[selectedSource].path)}} here</div>
             <div :class="$.placeholderTips">{{sources[selectedSource].path}}</div>
           </div>
         </div>
@@ -118,6 +121,10 @@
       }
     },
 
+    created() {
+      this.path = path
+    },
+
     mounted() {
       this.highlightStyleTag = document.createElement('style')
       document.head.appendChild(this.highlightStyleTag)
@@ -130,7 +137,14 @@
     methods: {
 
       onDrop(event, defaultHandler) {
-        const { files } = event.dataTransfer
+        this.pickFiles(event.dataTransfer.files, defaultHandler)
+      },
+
+      onPickFiles(event, defaultHandler) {
+        this.pickFiles(event.target.files, defaultHandler)
+      },
+
+      pickFiles(files, defaultHandler) {
         if (!files.length) {
           return
         }
@@ -163,8 +177,9 @@
       },
 
       async readOriginal(file) {
-        if (this.selectedSource != null) {
-          this.sources[this.selectedSource].content = await readAsText(file)
+        const { selectedSource } = this
+        if (selectedSource != null) {
+          this.sources[selectedSource].content = await readAsText(file)
         }
       },
 
@@ -304,10 +319,6 @@
         return lines
       },
 
-      selectedSourceName() {
-        return path.basename(this.sources[this.selectedSource].path)
-      },
-
       selectedView() {
         const source = this.sources[this.selectedSource]
 
@@ -394,8 +405,8 @@
 
 <style module="$">
   .app {
-    height: 100%;
     position: relative;
+    height: 100%;
     width: 100%;
   }
   .container {
@@ -408,8 +419,19 @@
     width: 1px;
   }
   .placeholderContainer {
+    position: relative;
+    overflow: hidden;
     height: 100%;
     padding: 5px;
+  }
+  .filePicker {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
   }
   .placeholder {
     display: flex;
