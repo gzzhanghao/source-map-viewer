@@ -19,7 +19,7 @@
         />
         <div :class="$.placeholderContainer" v-else>
           <div :class="$.placeholder">
-            <span>Drop {{missingGenerated || 'generated file'}} here</span>
+            <div :class="$.placeholderText">Drop {{missingGenerated || 'generated file'}} here</div>
           </div>
         </div>
       </div>
@@ -40,7 +40,7 @@
         />
         <div :class="$.placeholderContainer" v-else>
           <div :class="$.placeholder">
-            <span>Drop {{missingSourceMap || 'sourcemap file'}} here</span>
+            <div :class="$.placeholderText">Drop {{missingSourceMap || 'sourcemap file'}} here</div>
           </div>
         </div>
       </div>
@@ -61,7 +61,8 @@
         />
         <div :class="$.placeholderContainer" v-else>
           <div :class="$.placeholder">
-            <span>Drop {{missingSourceMap || 'sourcemap file'}} here</span>
+            <div :class="$.placeholderText">Drop {{selectedSourceName}} here</div>
+            <div :class="$.placeholderTips">{{sources[selectedSource].path}}</div>
           </div>
         </div>
       </div>
@@ -75,6 +76,8 @@
 </template>
 
 <script>
+  import path from 'path'
+
   import get from 'lodash/get'
   import map from 'lodash/map'
   import find from 'lodash/find'
@@ -301,6 +304,10 @@
         return lines
       },
 
+      selectedSourceName() {
+        return path.basename(this.sources[this.selectedSource].path)
+      },
+
       selectedView() {
         const source = this.sources[this.selectedSource]
 
@@ -406,17 +413,27 @@
   }
   .placeholder {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
     height: 100%;
-    font-size: 2em;
     font-family: sans-serif;
     border: 2px dashed gray;
   }
-  .placeholder span {
+  .placeholderText {
     display: inline-block;
     width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 1.5em;
     color: gray;
-    text-align: center;
+  }
+  .placeholderTips {
+    white-space: nowrap;
+    font-size: .9em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #999;
   }
   .sourceView {
     height: 100%;
