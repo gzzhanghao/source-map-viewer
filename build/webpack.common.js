@@ -1,5 +1,6 @@
-const webpack = require('webpack')
 const path = require('path')
+const webpack = require('webpack')
+const CleanWebpackPlugin = require('clean-webpack-plugin')
 
 module.exports = {
 
@@ -26,8 +27,6 @@ module.exports = {
     ],
   },
 
-  devtool: '#source-map',
-
   resolve: {
     extensions: ['.js', '.vue'],
   },
@@ -36,10 +35,20 @@ module.exports = {
     'fs': 'null',
   },
 
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        vendor: {
+          test: /node_modules/,
+          chunks: 'initial',
+          name: 'vendor',
+          enforce: true,
+        },
+      },
+    },
+  },
+
   plugins: [
-    new webpack.optimize.CommonsChunkPlugin({
-      name: 'vendor',
-      minChunks: module => module.context && module.context.includes('node_modules'),
-    }),
-  ]
+    new CleanWebpackPlugin(['dist']),
+  ],
 }

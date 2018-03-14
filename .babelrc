@@ -2,4 +2,9 @@
   presets: [
     ['env', { targets: { chrome: 62 } }],
   ],
+  env: {
+    production: {
+      presets: ['minify'],
+    },
+  },
 }
