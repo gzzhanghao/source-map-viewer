@@ -1,5 +1,4 @@
 const path = require('path')
-const webpack = require('webpack')
 const CleanWebpackPlugin = require('clean-webpack-plugin')
 
 module.exports = {
@@ -24,11 +23,15 @@ module.exports = {
         test: /\.js$/,
         loader: 'babel-loader',
       },
+      {
+        test: /\.svg$/,
+        loader: 'vue-svg-loader',
+      },
     ],
   },
 
   resolve: {
-    extensions: ['.js', '.vue'],
+    extensions: ['.js', '.vue', '.svg'],
   },
 
   externals: {
