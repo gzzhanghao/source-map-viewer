@@ -54,6 +54,7 @@
 </template>
 
 <script>
+  import qs from 'querystring'
   import path from 'path'
 
   import Menu from './icons/Menu'
@@ -120,6 +121,9 @@
 
     mounted() {
       window.addEventListener('mousedown', this.onHideFileList)
+      if (location.hash) {
+        this.loadDemo()
+      }
     },
 
     beforeDestroy() {
@@ -175,6 +179,46 @@
 
       togglePanel(type) {
         this.enabledPanels[type] = !this.enabledPanels[type]
+      },
+
+      async loadDemo() {
+        const query = qs.parse(location.hash.slice(1))
+        const promises = []
+
+        if (query.file) {
+          promises[0] = fetch(`demo/${query.file}`).then(res => res.text())
+        }
+
+        if (query.map) {
+          promises[1] = fetch(`demo/${query.map}`).then(res => res.json())
+        }
+
+        const [file, map] = await Promise.all(promises)
+
+        if (this.model.generatedContent || this.model.sourceMapData) {
+          return
+        }
+        if (file) {
+          this.model.setGeneratedContent(file)
+        }
+        if (map) {
+          this.model.setSourceMapData(map)
+        }
+        if (this.model.sources[+query.src]) {
+          this.model.selectedIndex = +query.src
+        }
+        this.$nextTick(() => {
+          if (query.genLine) {
+            this.scrollToLine(+query.genLine, 'generated')
+            this.scrollToLine(+query.genLine, 'sourceMap')
+          }
+          if (query.oriLine) {
+            this.scrollToLine(+query.oriLine, 'original')
+          }
+          if (query.hover) {
+            this.hovering = query.hover
+          }
+        })
       },
     },
   }

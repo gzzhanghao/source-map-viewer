@@ -220,17 +220,11 @@ export default () => new Vue({
       const content = await readAsText(file)
       switch (type) {
         case 'generated': {
-          this.generatedContent = content
-          if (!this.generatedInfo.inlineSourceMap) {
-            break
-          }
-          this.sourceMapData = this.generatedInfo.inlineSourceMap
-          this.selectedIndex = 0
+          this.setGeneratedContent(content)
           break
         }
         case 'sourceMap': {
-          this.sourceMapData = JSON.parse(content)
-          this.selectedIndex = 0
+          this.setSourceMapData(JSON.parse(content))
           break
         }
         case 'original': {
@@ -238,6 +232,19 @@ export default () => new Vue({
           break
         }
       }
+    },
+
+    setGeneratedContent(content) {
+      this.generatedContent = content
+      if (this.generatedInfo.inlineSourceMap) {
+        this.setSourceMapData(this.generatedInfo.inlineSourceMap)
+      }
+    },
+
+    setSourceMapData(map) {
+      this.sourceMapData = map
+      this.selectedIndex = 0
+      this.overrides = {}
     },
   },
 })
