@@ -38,6 +38,7 @@
       <SourcePanel
         v-for="item in panels"
         v-show="!item.hidden && enabledPanels[item.name]"
+        :class="$.panel"
         :key="item.name"
         :ref="item.name"
         :content="item.content"
@@ -339,7 +340,8 @@
     width: 100%;
     height: 100%;
   }
-  .container > * {
+  .panel {
+    position: relative;
     flex: 1 auto;
     width: 1px;
   }
@@ -357,5 +359,16 @@
     overflow: hidden;
     text-overflow: ellipsis;
     color: #999;
+  }
+
+  @media screen and (orientation: portrait) {
+
+    .container {
+      flex-direction: column;
+    }
+
+    .panel {
+      width: 100%;
+    }
   }
 </style>
