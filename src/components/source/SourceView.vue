@@ -102,7 +102,7 @@
 
     created() {
       this.lineHeight = 18
-      this.lastScrollTop = null
+      this.currentScrollTop = null
 
       this.onHover = debounce(this.onHover).bind(this)
       this.onDragEnd = debounce(this.onDragEnd).bind(this)
@@ -140,10 +140,10 @@
     methods: {
 
       scrollTo(offset) {
-        if (this.lastScrollTop === offset) {
+        if (this.currentScrollTop === offset) {
           return
         }
-        this.lastScrollTop = offset
+        this.currentScrollTop = offset
         this.$el.scrollTop = offset
       },
 
@@ -151,11 +151,15 @@
         this.scrollTo(line * this.lineHeight - this.lineHeight / 2 + 2 - this.$el.offsetHeight / 2)
       },
 
+      getOffset() {
+        return this.currentScrollTop
+      },
+
       onViewportUpdate() {
         const { scrollTop, offsetHeight } = this.$el
 
         this.viewport = [scrollTop, offsetHeight]
-        this.lastScrollTop = scrollTop
+        this.currentScrollTop = scrollTop
 
         this.$emit('scroll', scrollTop)
         this.$nextTick(() => {

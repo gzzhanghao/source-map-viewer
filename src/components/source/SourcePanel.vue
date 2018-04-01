@@ -59,6 +59,12 @@
         }
       },
 
+      getOffset() {
+        if (this.$refs.sourceView) {
+          return this.$refs.sourceView.getOffset()
+        }
+      },
+
       onHover(event) {
         this.$emit('hover', event)
       },

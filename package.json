@@ -6,7 +6,8 @@
   "scripts": {
     "start": "webpack-dev-server --config=build/webpack.dev.js --progress --inline --hot",
     "build:dev": "webpack --config=build/webpack.dev.js",
-    "build": "webpack --config=build/webpack.prod.js"
+    "build": "webpack --config=build/webpack.prod.js",
+    "lint": "eslint"
   },
   "author": "",
   "license": "ISC",
@@ -14,6 +15,7 @@
     "babel-core": "^6.26.0",
     "babel-eslint": "^8.2.2",
     "babel-loader": "^7.1.4",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-env": "^1.6.1",
     "babel-preset-minify": "^0.3.0",
     "clean-webpack-plugin": "^0.1.19",

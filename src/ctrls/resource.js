@@ -1,4 +1,3 @@
-import Vue from 'vue'
 import sortedIndexBy from 'lodash/sortedIndexBy'
 import { fromSource, mapFileCommentRegex } from 'convert-source-map'
 import { BasicSourceMapConsumer } from 'source-map/lib/source-map-consumer'
@@ -7,7 +6,7 @@ import readAsText from '../utils/readAsText'
 
 const parser = Object.create(BasicSourceMapConsumer.prototype)
 
-export default () => new Vue({
+export default {
 
   data() {
     return {
@@ -205,26 +204,33 @@ export default () => new Vue({
         return
       }
       if (files.length === 1 || type === 'original') {
-        this.handleFile(files[0], type)
+        return this.handleFile(await readAsText(files[0]), type)
       }
+      const contents = await Promise.all([
+        readAsText(files[0]),
+        readAsText(files[1]),
+      ])
       if (files[0].name.endsWith('.map')) {
-        await this.handleFile(files[1], 'generated')
-        this.handleFile(files[0], 'sourceMap')
+        await this.handleFile(contents[1], 'generated')
+        return this.handleFile(contents[0], 'sourceMap')
       } else {
-        await this.handleFile(files[0], 'generated')
-        this.handleFile(files[1], 'sourceMap')
+        await this.handleFile(contents[0], 'generated')
+        return this.handleFile(contents[1], 'sourceMap')
       }
     },
 
-    async handleFile(file, type) {
-      const content = await readAsText(file)
+    async handleFile(content, type) {
       switch (type) {
         case 'generated': {
           this.setGeneratedContent(content)
           break
         }
         case 'sourceMap': {
-          this.setSourceMapData(JSON.parse(content))
+          try {
+            this.setSourceMapData(JSON.parse(content))
+          } catch (error) {
+            this.$ctrl.tips.err('Invalid sourcemap')
+          }
           break
         }
         case 'original': {
@@ -247,7 +253,7 @@ export default () => new Vue({
       this.overrides = {}
     },
   },
-})
+}
 
 function genId(mapping) {
   if (mapping.source == null) {

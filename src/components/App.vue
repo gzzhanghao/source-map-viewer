@@ -1,14 +1,15 @@
 <template>
   <div :class="$.app">
+    <Tips />
     <div :class="$.nav">
-      <Menu v-if="model.sources.length" :class="$.navMenu" @click.native="onToggleFileList" />
+      <Menu v-if="$ctrl.resource.sources.length" :class="$.navMenu" @click.native="onToggleFileList" />
       <ul v-if="displayFileList" :class="$.fileList" @mousedown.stop>
         <li
-          v-for="(src, index) in model.sources"
+          v-for="(src, index) in $ctrl.resource.sources"
           :key="index"
           :class="[$.fileListItem, {
-            [$.active]: model.selectedIndex === index,
-            [$.missingContent]: !model.sourceContents[index] && !model.overrides[index],
+            [$.active]: $ctrl.resource.selectedIndex === index,
+            [$.missingContent]: !$ctrl.resource.sourceContents[index] && !$ctrl.resource.overrides[index],
           }]"
           :title="src"
           @click="onSelectOriginal(index)"
@@ -16,12 +17,13 @@
           {{src}}
         </li>
       </ul>
-      <span :class="$.navTitle" :title="model.selectedFileName">
-        {{model.selectedFileName}}
+      <span :class="$.navTitle" :title="$ctrl.resource.selectedFileName">
+        {{$ctrl.resource.selectedFileName}}
       </span>
       <span :class="$.panelButtonGroup">
         <a
           v-for="item in panels"
+          v-show="!item.hidden"
           :key="item.name"
           :class="[$.panelButton, { [$.active]: !item.hidden && enabledPanels[item.name] }]"
           href="javascript:"
@@ -35,7 +37,7 @@
     <div :class="$.container">
       <SourcePanel
         v-for="item in panels"
-        v-if="!item.hidden && enabledPanels[item.name]"
+        v-show="!item.hidden && enabledPanels[item.name]"
         :key="item.name"
         :ref="item.name"
         :content="item.content"
@@ -54,12 +56,11 @@
 </template>
 
 <script>
-  import qs from 'querystring'
   import path from 'path'
 
   import Menu from './icons/Menu'
+  import Tips from './Tips'
   import SourcePanel from './source/SourcePanel'
-  import createModel from '../models'
 
   const SCROLL_SYNC = {
     generated: 'sourceMap',
@@ -68,12 +69,10 @@
 
   export default {
 
-    components: { Menu, SourcePanel },
+    components: { Tips, Menu, SourcePanel },
 
     data() {
       return {
-
-        model: createModel(),
 
         hovering: null,
 
@@ -86,32 +85,34 @@
     computed: {
 
       panels() {
-        const { model } = this
+        const { resource } = this.$ctrl
 
-        return [
+        const panels = [
           {
             displayName: 'Generated',
             name: 'generated',
-            content: model.generatedView,
+            content: resource.generatedView,
             lineNumber: true,
-            promoteText: `Drop ${model.generatedFileName || 'generated file'} here`,
+            promoteText: `Drop ${resource.generatedFileName || 'generated file'} here`,
           },
           {
             displayName: 'SourceMap',
             name: 'sourceMap',
-            content: model.mappingsView,
-            promoteText: `Drop ${model.sourceMapFileName || 'sourcemap file'} here`,
+            content: resource.mappingsView,
+            promoteText: `Drop ${resource.sourceMapFileName || 'sourcemap file'} here`,
           },
           {
             displayName: 'Original',
             name: 'original',
-            hidden: model.selectedFileName == null,
-            content: model.selectedView,
+            hidden: resource.selectedFileName == null,
+            content: resource.selectedView,
             lineNumber: true,
-            promoteText: model.selectedFileName && `Drop ${path.basename(model.selectedFileName)} here`,
-            promoteTips: model.selectedFileName,
+            promoteText: `Drop ${path.basename(resource.selectedFileName || '')} here`,
+            promoteTips: resource.selectedFileName || '',
           },
         ]
+
+        return panels
       },
     },
 
@@ -121,9 +122,6 @@
 
     mounted() {
       window.addEventListener('mousedown', this.onHideFileList)
-      if (location.hash) {
-        this.loadDemo()
-      }
     },
 
     beforeDestroy() {
@@ -134,7 +132,7 @@
 
       onUpload(files, type) {
         this.displayFileList = false
-        this.model.handleFiles(files, type)
+        this.$ctrl.resource.handleFiles(files, type)
       },
 
       onHover(id) {
@@ -146,7 +144,7 @@
           this.scrollToLine(mapping.generatedLine, 'generated')
           return this.scrollToLine(mapping.generatedLine, 'sourceMap')
         }
-        this.model.selectedIndex = mapping.source
+        this.$ctrl.resource.selectedIndex = mapping.source
         this.$nextTick(() => {
           this.scrollToLine(mapping.originalLine, 'original')
         })
@@ -168,7 +166,7 @@
 
       onSelectOriginal(index) {
         this.displayFileList = false
-        this.model.selectedIndex = index
+        this.$ctrl.resource.selectedIndex = index
       },
 
       scrollToLine(line, target) {
@@ -181,44 +179,42 @@
         this.enabledPanels[type] = !this.enabledPanels[type]
       },
 
-      async loadDemo() {
-        const query = qs.parse(location.hash.slice(1))
-        const promises = []
-
-        if (query.file) {
-          promises[0] = fetch(`demo/${query.file}`).then(res => res.text())
+      serialize() {
+        const data = {
+          generatedContent: this.$ctrl.resource.generatedContent,
+          overrides: this.$ctrl.resource.overrides,
+          selectedIndex: this.$ctrl.resource.selectedIndex,
+          hovering: this.hovering,
+          enabledPanels: this.enabledPanels,
+          offset: {
+            generated: this.$refs.generated[0].getOffset() || this.$refs.sourceMap[0].getOffset(),
+            original: this.$refs.original[0].getOffset(),
+          },
         }
 
-        if (query.map) {
-          promises[1] = fetch(`demo/${query.map}`).then(res => res.json())
+        if (this.$ctrl.resource.generatedInfo.inlineSourceMap !== this.$ctrl.resource.sourceMapData) {
+          data.sourceMapData = this.$ctrl.resource.sourceMapData
         }
 
-        const [file, map] = await Promise.all(promises)
+        return JSON.stringify(data)
+      },
 
-        if (this.model.generatedContent || this.model.sourceMapData) {
-          return
+      restore(data) {
+        data = JSON.parse(data)
+
+        this.$ctrl.resource.setGeneratedContent(data.generatedContent)
+        this.$ctrl.resource.overrides = data.overrides
+        this.$ctrl.resource.selectedIndex = data.selectedIndex
+        this.hovering = data.hovering
+        this.enabledPanels = data.enabledPanels
+
+        if (data.sourceMapData) {
+          this.$ctrl.resource.sourceMapData = data.sourceMapData
         }
-        if (file) {
-          this.model.setGeneratedContent(file)
-        }
-        if (map) {
-          this.model.setSourceMapData(map)
-        }
-        if (this.model.sources[+query.src]) {
-          this.model.selectedIndex = +query.src
-        }
-        this.$nextTick(() => {
-          if (query.genLine) {
-            this.scrollToLine(+query.genLine, 'generated')
-            this.scrollToLine(+query.genLine, 'sourceMap')
-          }
-          if (query.oriLine) {
-            this.scrollToLine(+query.oriLine, 'original')
-          }
-          if (query.hover) {
-            this.hovering = query.hover
-          }
-        })
+
+        this.$refs.generated[0].scrollTo(data.offset.generated || 0)
+        this.$refs.sourceMap[0].scrollTo(data.offset.generated || 0)
+        this.$refs.original[0].scrollTo(data.offset.original || 0)
       },
     },
   }
@@ -247,6 +243,12 @@
   }
   *::-webkit-scrollbar-track {
     background: #eee;
+  }
+  .fade-enter-active, .fade-leave-active {
+    transition: opacity .2s;
+  }
+  .fade-enter, .fade-leave-to {
+    opacity: 0;
   }
 </style>
 
