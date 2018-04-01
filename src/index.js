@@ -10,5 +10,5 @@ Vue.use(inherit('ctrl', '$ctrl'))
 window.app = new Vue({
   el: '#app',
   ctrl: new Ctrl(ctrls),
-  render: h => h(App),
+  ...App,
 })
