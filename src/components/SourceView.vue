@@ -40,7 +40,6 @@
 </template>
 
 <script>
-  import compact from 'lodash/compact'
   import debounce from 'lodash/debounce'
 
   const LINE_PADDING = 10
@@ -52,7 +51,7 @@
     filters: {
 
       names(names) {
-        return compact(names).join(',')
+        return (names || []).filter(v => v).join(',')
       },
     },
 

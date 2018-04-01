@@ -59,9 +59,9 @@
 <script>
   import path from 'path'
 
-  import Menu from './icons/Menu'
   import Tips from './Tips'
-  import SourcePanel from './source/SourcePanel'
+  import Menu from './icons/Menu'
+  import SourcePanel from './SourcePanel'
 
   const SCROLL_SYNC = {
     generated: 'sourceMap',
@@ -121,8 +121,23 @@
       this.onHideFileList = this.onHideFileList.bind(this)
     },
 
-    mounted() {
+    async mounted() {
       window.addEventListener('mousedown', this.onHideFileList)
+
+      if (!location.hash || !location.hash.startsWith('#/url/')) {
+        return
+      }
+
+      try {
+        const { files } = await fetch(location.hash.slice(6)).then(res => res.json())
+        const caseData = await fetch(Object.values(files)[0].raw_url).then(res => res.text())
+
+        this.restore(caseData)
+
+        this.$ctrl.tips.suc('Restore success')
+      } catch (error) {
+        this.$ctrl.tips.err('Failed to restore data from url')
+      }
     },
 
     beforeDestroy() {
@@ -213,9 +228,11 @@
           this.$ctrl.resource.sourceMapData = data.sourceMapData
         }
 
-        this.$refs.generated[0].scrollTo(data.offset.generated || 0)
-        this.$refs.sourceMap[0].scrollTo(data.offset.generated || 0)
-        this.$refs.original[0].scrollTo(data.offset.original || 0)
+        this.$nextTick(() => {
+          this.$refs.generated[0].scrollTo(data.offset.generated || 0)
+          this.$refs.sourceMap[0].scrollTo(data.offset.generated || 0)
+          this.$refs.original[0].scrollTo(data.offset.original || 0)
+        })
       },
     },
   }
