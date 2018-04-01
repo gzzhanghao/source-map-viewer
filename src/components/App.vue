@@ -344,6 +344,7 @@
     position: relative;
     flex: 1 auto;
     width: 1px;
+    height: 100%;
   }
   .promoteText {
     display: inline-block;
@@ -368,6 +369,7 @@
     }
 
     .panel {
+      height: 1px;
       width: 100%;
     }
   }
