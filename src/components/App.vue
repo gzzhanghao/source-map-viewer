@@ -136,11 +136,15 @@
           caseData = await fetch(Object.values(files)[0].raw_url).then(res => res.text())
         } else if (location.hash.startsWith('#/raw/')) {
           caseData = await fetch(decodeURIComponent(location.hash.slice(6))).then(res => res.text())
+        } else if (location.hash.startsWith('#/json/')) {
+          caseData = decodeURIComponent(location.hash.slice(7))
         }
+
 
         this.restore(caseData)
       } catch (error) {
         this.$ctrl.tips.err('Failed to restore data from url')
+        console.error(error.stack) // eslint-disable-line no-console
       }
     },
 
