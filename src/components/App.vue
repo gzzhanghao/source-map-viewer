@@ -124,13 +124,19 @@
     async mounted() {
       window.addEventListener('mousedown', this.onHideFileList)
 
-      if (!location.hash || !location.hash.startsWith('#/url/')) {
+      if (!location.hash) {
         return
       }
 
       try {
-        const { files } = await fetch(location.hash.slice(6)).then(res => res.json())
-        const caseData = await fetch(Object.values(files)[0].raw_url).then(res => res.text())
+        let caseData = null
+
+        if (location.hash.startsWith('#/url/')) {
+          const { files } = await fetch(decodeURIComponent(location.hash.slice(6))).then(res => res.json())
+          caseData = await fetch(Object.values(files)[0].raw_url).then(res => res.text())
+        } else if (location.hash.startsWith('#/raw/')) {
+          caseData = await fetch(decodeURIComponent(location.hash.slice(6))).then(res => res.text())
+        }
 
         this.restore(caseData)
 
