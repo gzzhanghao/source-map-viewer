@@ -139,8 +139,6 @@
         }
 
         this.restore(caseData)
-
-        this.$ctrl.tips.suc('Restore success')
       } catch (error) {
         this.$ctrl.tips.err('Failed to restore data from url')
       }
