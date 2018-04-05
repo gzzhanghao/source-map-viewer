@@ -1,8 +1,8 @@
 <template>
   <div
-    :class="[$.container, { [$.dragging]: dragging }]"
+    :class="$.container"
+    @click="onCancelSelect"
     @scroll="onViewportUpdate"
-    @mousedown="onDragStart"
   >
     <div :style="{ height: `${content.length * lineHeight + 2}px`, minWidth: `${maxWidth}px` }">
       <table :style="{ transform: `translateY(${translateY}px)` }">
@@ -21,9 +21,9 @@
               <span
                 v-for="(chunk, index) in lineData"
                 :key="index"
-                :class="[$.chunk, { [$.mapped]: chunk.id, [$.hovering]: chunk.id === hovering }]"
+                :class="[$.chunk, { [$.mapped]: chunk.id, [$.highlighted]: chunk.id === highlighted }]"
                 :title="chunk.names | names"
-                @click="onSelect(chunk)"
+                @click.stop="onSelect(chunk)"
                 @mouseover="onHover(chunk)"
               >
                 <template>{{chunk.content}}</template>
@@ -44,8 +44,6 @@
 
   const LINE_PADDING = 10
 
-  const DRAGGING_FACTOR = 2
-
   export default {
 
     filters: {
@@ -60,7 +58,7 @@
       content: { type: Array, required: true },
       //
 
-      hovering: { type: String },
+      highlighted: { type: String },
       //
 
       lineNumber: { type: Boolean, default: false },
@@ -74,9 +72,6 @@
         //
 
         viewport: [0, 0],
-        //
-
-        dragging: null,
         //
       }
     },
@@ -104,24 +99,15 @@
       this.currentScrollTop = null
 
       this.onHover = debounce(this.onHover).bind(this)
-      this.onDragEnd = debounce(this.onDragEnd).bind(this)
-      this.onDragMove = debounce(this.onDragMove).bind(this)
       this.onViewportUpdate = this.onViewportUpdate.bind(this)
     },
 
     mounted() {
       this.onViewportUpdate()
-
-      window.addEventListener('mousemove', this.onDragMove)
-      window.addEventListener('mouseup', this.onDragEnd)
-
       this.$refs.resizeDetector.contentWindow.addEventListener('resize', this.onViewportUpdate)
     },
 
     beforeDestroy() {
-      window.removeEventListener('mousemove', this.onDragMove)
-      window.removeEventListener('mouseup', this.onDragEnd)
-
       if (this.$refs.resizeDetector.contentWindow) {
         this.$refs.resizeDetector.contentWindow.removeEventListener('resize', this.onViewportUpdate)
       }
@@ -172,33 +158,14 @@
         }
       },
 
+      onCancelSelect() {
+        this.$emit('hover', null)
+      },
+
       onHover(chunk) {
         if (chunk.id) {
           this.$emit('hover', chunk.id)
         }
-      },
-
-      onDragStart(event) {
-        if (event.ctrlKey || event.button) {
-          return
-        }
-        event.preventDefault()
-        this.dragging = {
-          x: this.$el.scrollLeft + DRAGGING_FACTOR * event.clientX,
-          y: this.$el.scrollTop + DRAGGING_FACTOR * event.clientY,
-        }
-      },
-
-      onDragMove(event) {
-        if (!this.dragging) {
-          return
-        }
-        this.$el.scrollLeft = this.dragging.x - DRAGGING_FACTOR * event.clientX
-        this.$el.scrollTop = this.dragging.y - DRAGGING_FACTOR * event.clientY
-      },
-
-      onDragEnd() {
-        this.dragging = null
       },
     },
   }
@@ -208,10 +175,9 @@
   .container {
     position: relative;
     overflow: scroll;
-    cursor: -webkit-grab;
   }
-  .container.dragging {
-    cursor: -webkit-grabbing;
+  .container *::selection {
+    background: rgba(0, 0, 255, .2);
   }
   .line {
     font-size: 12px;
@@ -234,7 +200,7 @@
     border-radius: 2px;
     cursor: pointer;
   }
-  .chunk.hovering {
+  .chunk.highlighted {
     color: white;
     background: black;
     border-left-color: black !important;

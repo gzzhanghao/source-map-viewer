@@ -2,6 +2,7 @@
   <div
     :class="$.container"
     @dragover.prevent
+    @mouseover="onMouseOver"
     @drop.prevent="onDropFiles"
   >
     <SourceView
@@ -9,7 +10,7 @@
       ref="sourceView"
       :class="$.sourceView"
       :content="content"
-      :hovering="hovering"
+      :highlighted="highlighted"
       :line-number="lineNumber"
       @hover="onHover"
       @select="onSelect"
@@ -40,7 +41,7 @@
 
       content: { type: Array },
 
-      hovering: { type: String },
+      highlighted: { type: String },
 
       lineNumber: { type: Boolean, default: false },
     },
@@ -83,6 +84,10 @@
 
       onDropFiles(event) {
         this.$emit('upload', event.dataTransfer.files)
+      },
+
+      onMouseOver() {
+        this.$emit('mouseover')
       },
     },
   }

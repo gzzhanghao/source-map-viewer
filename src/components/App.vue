@@ -1,38 +1,12 @@
 <template>
   <div :class="$.app">
     <Tips />
-    <div :class="$.nav">
-      <Menu v-if="$ctrl.resource.sources.length" :class="$.navMenu" @click.native="onToggleFileList" />
-      <ul v-if="displayFileList" :class="$.fileList" @mousedown.stop>
-        <li
-          v-for="(src, index) in $ctrl.resource.sources"
-          :key="index"
-          :class="[$.fileListItem, {
-            [$.active]: $ctrl.resource.selectedIndex === index,
-            [$.missingContent]: !$ctrl.resource.sourceContents[index] && !$ctrl.resource.overrides[index],
-          }]"
-          :title="src"
-          @click="onSelectOriginal(index)"
-        >
-          {{src}}
-        </li>
-      </ul>
-      <span :class="$.navTitle" :title="$ctrl.resource.selectedFileName">
-        {{$ctrl.resource.selectedFileName}}
-      </span>
-      <span :class="$.panelButtonGroup">
-        <a
-          v-for="item in panels"
-          v-show="!item.hidden"
-          :key="item.name"
-          :class="[$.panelButton, { [$.active]: !item.hidden && enabledPanels[item.name] }]"
-          href="javascript:"
-          @click="togglePanel(item.name)"
-        >
-          {{item.displayName}}
-        </a>
-      </span>
-    </div>
+
+    <Nav
+      :panels="panels"
+      :enabled-panels="enabledPanels"
+      @toggle="onTogglePanel"
+    />
 
     <div :class="$.container">
       <SourcePanel
@@ -42,12 +16,13 @@
         :key="item.name"
         :ref="item.name"
         :content="item.content"
-        :hovering="hovering"
+        :highlighted="highlighted"
         :line-number="item.lineNumber"
-        @hover="onHover"
-        @select="onSelect($event, item.name)"
-        @scroll="onScroll($event, item.name)"
+        @hover="onHoverNode"
         @upload="onUpload($event, item.name)"
+        @scroll="onPanelScroll($event, item.name)"
+        @select="onSelectNode($event, item.name)"
+        @mouseover="onMouseOver($event, item.name)"
       >
         <div :class="$.promoteText">{{item.promoteText}}</div>
         <div v-if="item.promoteTips" :class="$.promoteTips">{{item.promoteTips}}</div>
@@ -58,9 +33,10 @@
 
 <script>
   import path from 'path'
+  import find from 'lodash/find'
 
+  import Nav from './Nav'
   import Tips from './Tips'
-  import Menu from './icons/Menu'
   import SourcePanel from './SourcePanel'
 
   const SCROLL_SYNC = {
@@ -68,40 +44,52 @@
     sourceMap: 'generated',
   }
 
+  const SHAREABLE_PREFIX = `${location.protocol}//${location.host}/#/json/`
+
   export default {
 
-    components: { Tips, Menu, SourcePanel },
+    components: { Nav, Tips, SourcePanel },
 
     data() {
       return {
 
-        hovering: null,
+        orientation: 'landscape',
+        // viewport orientation
 
-        displayFileList: false,
+        hovering: null,
+        // panel currently hovering on
+
+        highlighted: null,
+        // id to be highlighted
 
         enabledPanels: { generated: true, sourceMap: true, original: true },
+        // enabled panels
       }
     },
 
     computed: {
 
+      /**
+       * Computed document.title according to uploaded file name
+       */
+      title() {
+        const { resource } = this.$ctrl
+        const files = [
+          resource.generatedFileName || resource.expectedGeneratedFileName,
+          resource.sourceMapFileName || resource.expectedSourceMapFileName,
+        ].filter(v => v)
+        if (!files.length) {
+          return 'SourceMapViewer'
+        }
+        return `${files.join(' / ')} - SMV`
+      },
+
+      /**
+       * Data of panels
+       */
       panels() {
         const { resource } = this.$ctrl
-
-        const panels = [
-          {
-            displayName: 'Generated',
-            name: 'generated',
-            content: resource.generatedView,
-            lineNumber: true,
-            promoteText: `Drop ${resource.generatedFileName || 'generated file'} here`,
-          },
-          {
-            displayName: 'SourceMap',
-            name: 'sourceMap',
-            content: resource.mappingsView,
-            promoteText: `Drop ${resource.sourceMapFileName || 'sourcemap file'} here`,
-          },
+        return [
           {
             displayName: 'Original',
             name: 'original',
@@ -111,45 +99,56 @@
             promoteText: `Drop ${path.basename(resource.selectedFileName || '')} here`,
             promoteTips: resource.selectedFileName || '',
           },
+          {
+            displayName: 'Generated',
+            name: 'generated',
+            lineNumber: true,
+            content: resource.generatedView,
+            promoteText: `Drop ${resource.expectedGeneratedFileName || 'generated file'} here`,
+          },
+          {
+            displayName: 'SourceMap',
+            name: 'sourceMap',
+            lineNumber: !this.enabledPanels.generated || this.orientation === 'portrait',
+            content: resource.mappingsView,
+            promoteText: `Drop ${resource.expectedSourceMapFileName || 'sourcemap file'} here`,
+          },
         ]
+      },
+    },
 
-        return panels
+    watch: {
+
+      title() {
+        document.title = this.title
       },
     },
 
     created() {
-      this.onHideFileList = this.onHideFileList.bind(this)
+      this.onCopy = this.onCopy.bind(this)
+      this.onPaste = this.onPaste.bind(this)
     },
 
-    async mounted() {
-      window.addEventListener('mousedown', this.onHideFileList)
+    mounted() {
+      this.match = window.matchMedia('screen and (orientation: portrait)')
 
-      if (!location.hash) {
-        return
-      }
+      this.match.onchange = this.onOrientationChange.bind(this)
+      this.onOrientationChange(this.match)
 
-      try {
-        let caseData = null
+      window.addEventListener('copy', this.onCopy)
+      window.addEventListener('paste', this.onPaste)
 
-        if (location.hash.startsWith('#/url/')) {
-          const { files } = await fetch(decodeURIComponent(location.hash.slice(6))).then(res => res.json())
-          caseData = await fetch(Object.values(files)[0].raw_url).then(res => res.text())
-        } else if (location.hash.startsWith('#/raw/')) {
-          caseData = await fetch(decodeURIComponent(location.hash.slice(6))).then(res => res.text())
-        } else if (location.hash.startsWith('#/json/')) {
-          caseData = decodeURIComponent(location.hash.slice(7))
-        }
-
-
-        this.restore(caseData)
-      } catch (error) {
-        this.$ctrl.tips.err('Failed to restore data from url')
-        console.error(error.stack) // eslint-disable-line no-console
+      if (location.hash) {
+        this.restoreFromHash()
       }
     },
 
     beforeDestroy() {
-      window.removeEventListener('mousedow', this.onHideFileList)
+      if (this.match) {
+        this.match.onchange = null
+      }
+      window.removeEventListener('copy', this.onCopy)
+      window.removeEventListener('paste', this.onPaste)
     },
 
     methods: {
@@ -159,11 +158,11 @@
         this.$ctrl.resource.handleFiles(files, type)
       },
 
-      onHover(id) {
-        this.hovering = id
+      onHoverNode(id) {
+        this.highlighted = id
       },
 
-      onSelect(mapping, type) {
+      onSelectNode(mapping, type) {
         if (type === 'original') {
           this.scrollToLine(mapping.generatedLine, 'generated')
           return this.scrollToLine(mapping.generatedLine, 'sourceMap')
@@ -174,23 +173,68 @@
         })
       },
 
-      onScroll(scrollTop, type) {
+      onMouseOver(event, type) {
+        this.hovering = type
+      },
+
+      onPanelScroll(scrollTop, type) {
         for (const panel of this.$refs[SCROLL_SYNC[type]] || []) {
           panel.scrollTo(scrollTop)
         }
       },
 
-      onToggleFileList() {
-        this.displayFileList = !this.displayFileList
+      onOrientationChange(event) {
+        if (event.matches) {
+          this.orientation = 'portrait'
+        } else {
+          this.orientation = 'landscape'
+        }
       },
 
-      onHideFileList() {
-        this.displayFileList = false
+      onTogglePanel(type) {
+        this.enabledPanels[type] = !this.enabledPanels[type]
       },
 
-      onSelectOriginal(index) {
-        this.displayFileList = false
-        this.$ctrl.resource.selectedIndex = index
+      onCopy(event) {
+        const sel = document.getSelection()
+        if (sel.anchorNode !== sel.focusNode || sel.anchorOffset !== sel.focusOffset) {
+          return
+        }
+        const data = this.serialize()
+        const encodedData = encodeURIComponent(data)
+        if (encodedData.length > 1900) {
+          event.clipboardData.setData('text/plain', data)
+          this.$ctrl.tips.suc('Case data copied to clipboard')
+        } else {
+          event.clipboardData.setData('text/plain', `${SHAREABLE_PREFIX}${encodeURIComponent(data)}`)
+          this.$ctrl.tips.suc('Shareable link copied to clipboard')
+        }
+        event.preventDefault()
+      },
+
+      onPaste(event) {
+        const textDataItem = find(event.clipboardData.items, { type: 'text/plain' })
+        if (!textDataItem) {
+          return
+        }
+        textDataItem.getAsString(str => {
+          if (str.startsWith(SHAREABLE_PREFIX)) {
+            return this.restore(str.slice(SHAREABLE_PREFIX.length))
+          }
+          let isSMVData = false
+          try {
+            isSMVData = JSON.parse(str).isSMVData
+          } catch (error) {
+            // noop
+          }
+          if (isSMVData) {
+            return this.restore(str)
+          }
+          if (!this.hovering) {
+            return
+          }
+          this.$ctrl.resource.handleText(str, this.hovering)
+        })
       },
 
       scrollToLine(line, target) {
@@ -199,48 +243,52 @@
         }
       },
 
-      togglePanel(type) {
-        this.enabledPanels[type] = !this.enabledPanels[type]
-      },
-
       serialize() {
-        const data = {
-          generatedContent: this.$ctrl.resource.generatedContent,
-          overrides: this.$ctrl.resource.overrides,
-          selectedIndex: this.$ctrl.resource.selectedIndex,
-          hovering: this.hovering,
+        return JSON.stringify({
+          isSMVData: true,
+          resource: this.$ctrl.resource.serialize(),
+          highlighted: this.highlighted,
           enabledPanels: this.enabledPanels,
           offset: {
             generated: this.$refs.generated[0].getOffset() || this.$refs.sourceMap[0].getOffset(),
             original: this.$refs.original[0].getOffset(),
           },
-        }
-
-        if (this.$ctrl.resource.generatedInfo.inlineSourceMap !== this.$ctrl.resource.sourceMapData) {
-          data.sourceMapData = this.$ctrl.resource.sourceMapData
-        }
-
-        return JSON.stringify(data)
+        })
       },
 
       restore(data) {
         data = JSON.parse(data)
 
-        this.$ctrl.resource.setGeneratedContent(data.generatedContent)
-        this.$ctrl.resource.overrides = data.overrides
-        this.$ctrl.resource.selectedIndex = data.selectedIndex
-        this.hovering = data.hovering
-        this.enabledPanels = data.enabledPanels
+        this.$ctrl.resource.restore(data.resource)
 
-        if (data.sourceMapData) {
-          this.$ctrl.resource.sourceMapData = data.sourceMapData
-        }
+        this.highlighted = data.highlighted
+        this.enabledPanels = data.enabledPanels
 
         this.$nextTick(() => {
           this.$refs.generated[0].scrollTo(data.offset.generated || 0)
           this.$refs.sourceMap[0].scrollTo(data.offset.generated || 0)
           this.$refs.original[0].scrollTo(data.offset.original || 0)
         })
+      },
+
+      async restoreFromHash() {
+        try {
+          let caseData = null
+
+          if (location.hash.startsWith('#/url/')) {
+            const { files } = await fetch(decodeURIComponent(location.hash.slice(6))).then(res => res.json())
+            caseData = await fetch(Object.values(files)[0].raw_url).then(res => res.text())
+          } else if (location.hash.startsWith('#/raw/')) {
+            caseData = await fetch(decodeURIComponent(location.hash.slice(6))).then(res => res.text())
+          } else if (location.hash.startsWith('#/json/')) {
+            caseData = decodeURIComponent(location.hash.slice(7))
+          }
+
+          this.restore(caseData)
+        } catch (error) {
+          this.$ctrl.tips.err('Failed to restore data from url')
+          console.error(error.stack) // eslint-disable-line no-console
+        }
       },
     },
   }
@@ -284,80 +332,6 @@
     flex-direction: column;
     height: 100%;
     width: 100%;
-  }
-  .nav {
-    position: relative;
-    display: flex;
-    flex: 0 0 auto;
-    line-height: 24px;
-    padding: 8px;
-    color: #bbb;
-    background: #444;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .2);
-  }
-  .navMenu {
-    flex: 0 0 auto;
-    cursor: pointer;
-    fill: #bbb;
-  }
-  .fileList {
-    position: fixed;
-    top: 6px;
-    left: 6px;
-    max-width: 90%;
-    max-width: calc(100% - 12px);
-    max-height: 90%;
-    max-height: calc(100% - 12px);
-    overflow: auto;
-    list-style: none;
-    margin: 0;
-    padding: 4px 0;
-    border-radius: 2px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, .6);
-    color: #888;
-    background: #fff;
-    z-index: 100;
-    user-select: none;
-  }
-  .fileListItem {
-    padding: 5px 12px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    cursor: pointer;
-  }
-  .fileListItem:hover {
-    background: #f6f6f6;
-  }
-  .fileListItem.active {
-    background: #eaeaea;
-    color: #333;
-  }
-  .fileListItem.missingContent {
-    color: #CD5C5C;
-  }
-  .navTitle {
-    margin-left: 8px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  .navTitle::selection {
-    background: #777;
-  }
-  .panelButtonGroup {
-    flex: 0 0 auto;
-    margin-left: auto;
-    user-select: none;
-  }
-  .panelButton {
-    display: inline-block;
-    margin-left: 8px;
-    color: #bbb;
-    text-decoration: none;
-  }
-  .panelButton.active {
-    color: white;
   }
   .container {
     display: flex;

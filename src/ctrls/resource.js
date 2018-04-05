@@ -22,6 +22,12 @@ export default {
 
       selectedIndex: null,
       // currently selected source index
+
+      generatedFileName: '',
+      // uploaded generated file name
+
+      sourceMapFileName: '',
+      // uploaded source map file name
     }
   },
 
@@ -31,7 +37,7 @@ export default {
       return this.generatedContent == null
     },
 
-    generatedFileName() {
+    expectedGeneratedFileName() {
       if (this.sourceMapData) {
         return this.sourceMapData.file
       }
@@ -53,7 +59,7 @@ export default {
       return this.sourceMapData == null
     },
 
-    sourceMapFileName() {
+    expectedSourceMapFileName() {
       return this.generatedInfo.sourceMapFile
     },
 
@@ -204,29 +210,31 @@ export default {
         return
       }
       if (files.length === 1 || type === 'original') {
-        return this.handleFile(await readAsText(files[0]), type)
+        return this.handleFile(files[0], type)
       }
-      const contents = await Promise.all([
-        readAsText(files[0]),
-        readAsText(files[1]),
-      ])
-      if (files[0].name.endsWith('.map')) {
-        await this.handleFile(contents[1], 'generated')
-        return this.handleFile(contents[0], 'sourceMap')
+      if (files[0].name.endsWith('.map') || files[0].name.endsWith('.json')) {
+        await this.handleFile(files[1], 'generated')
+        return this.handleFile(files[0], 'sourceMap')
       } else {
-        await this.handleFile(contents[0], 'generated')
-        return this.handleFile(contents[1], 'sourceMap')
+        await this.handleFile(files[0], 'generated')
+        return this.handleFile(files[1], 'sourceMap')
       }
     },
 
-    async handleFile(content, type) {
+    async handleFile(file, type) {
+      this.handleText(await readAsText(file), type, file.name)
+    },
+
+    handleText(content, type, fileName = null) {
       switch (type) {
         case 'generated': {
+          this.generatedFileName = fileName
           this.setGeneratedContent(content)
           break
         }
         case 'sourceMap': {
           try {
+            this.sourceMapFileName = fileName
             this.setSourceMapData(JSON.parse(content))
           } catch (error) {
             this.$ctrl.tips.err('Invalid sourcemap')
@@ -248,9 +256,36 @@ export default {
     },
 
     setSourceMapData(map) {
-      this.sourceMapData = map
+      this.sourceMapData = Object.freeze(map)
       this.selectedIndex = 0
       this.overrides = {}
+    },
+
+    serialize() {
+      const data = {
+        generatedContent: this.generatedContent,
+        overrides: this.overrides,
+        selectedIndex: this.selectedIndex,
+        generatedFileName: this.generatedFileName,
+        sourceMapFileName: this.sourceMapFileName,
+      }
+      if (this.generatedInfo.inlineSourceMap !== this.sourceMapData) {
+        data.sourceMapData = this.sourceMapData
+      }
+      return data
+    },
+
+    restore(data) {
+      this.setGeneratedContent(data.generatedContent)
+
+      this.overrides = data.overrides
+      this.selectedIndex = data.selectedIndex
+      this.generatedFileName = data.generatedFileName
+      this.sourceMapFileName = data.sourceMapFileName
+
+      if (data.sourceMapData) {
+        this.$ctrl.resource.sourceMapData = data.sourceMapData
+      }
     },
   },
 }
