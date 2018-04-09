@@ -202,7 +202,7 @@
         }
         const data = this.serialize()
         const encodedData = encodeURIComponent(data)
-        if (encodedData.length > 1900) {
+        if (encodedData.length > 40000) {
           event.clipboardData.setData('text/plain', data)
           this.$ctrl.tips.suc('Case data copied to clipboard')
         } else {
