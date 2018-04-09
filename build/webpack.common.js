@@ -22,6 +22,9 @@ module.exports = {
       {
         test: /\.js$/,
         loader: 'babel-loader',
+        include: [
+          path.resolve('src'),
+        ],
       },
       {
         test: /\.svg$/,

@@ -1,6 +1,6 @@
 {
   presets: [
-    ['env', { targets: { chrome: 62 } }],
+    ['env', { targets: { chrome: 62 }, modules: false }],
   ],
   plugins: [
     'transform-object-rest-spread',
