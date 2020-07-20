@@ -337,7 +337,7 @@
     display: flex;
     flex: 1;
     width: 100%;
-    height: 100%;
+    height: 1px;
   }
   .panel {
     position: relative;
@@ -365,6 +365,7 @@
 
     .container {
       flex-direction: column;
+      height: 100%;
     }
 
     .panel {
