@@ -287,6 +287,14 @@ export default {
         this.$ctrl.resource.sourceMapData = data.sourceMapData
       }
     },
+
+    findOriginalMapping({ line, column }) {
+      const lineMappings = this.mappings.generated
+        .filter(item => item.generatedLine === line)
+        .sort((a, b) => b.generatedColumn - a.generatedColumn)
+      const mapping = lineMappings.find(item => item.generatedColumn < column)
+      return { mapping, id: genId(mapping) }
+    },
   },
 }
 

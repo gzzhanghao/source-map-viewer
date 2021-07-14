@@ -5,6 +5,7 @@
     <Nav
       :panels="panels"
       :enabled-panels="enabledPanels"
+      @goto="onGoto"
       @toggle="onTogglePanel"
     />
 
@@ -189,6 +190,19 @@
         } else {
           this.orientation = 'landscape'
         }
+      },
+
+      onGoto(target) {
+        const { groups } = target.match(/:(?<line>\d+)(:(?<column>\d+))?/)
+        const { mapping, id } = this.$ctrl.resource.findOriginalMapping({
+          line: Number(groups.line) || 1,
+          column: Number(groups.column) || 0,
+        })
+        this.highlighted = id
+        this.$ctrl.resource.selectedIndex = mapping.source
+        this.$nextTick(() => {
+          this.scrollToLine(mapping.originalLine, 'original')
+        })
       },
 
       onTogglePanel(type) {

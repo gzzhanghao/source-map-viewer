@@ -36,6 +36,14 @@
       >
         {{item.displayName}}
       </a>
+      <span :class="$.panelSep">|</span>
+      <a
+        :class="[$.panelButton, $.active]"
+        href="javascript:"
+        @click="onToggleGoto"
+      >
+        Goto
+      </a>
     </span>
   </div>
 </template>
@@ -90,6 +98,10 @@
 
       onTogglePanel(type) {
         this.$emit('toggle', type)
+      },
+
+      onToggleGoto() {
+        this.$emit('goto', prompt())
       },
     },
   }
@@ -160,7 +172,11 @@
   .panelButtonGroup {
     flex: 0 0 auto;
     margin-left: auto;
+    display: flex;
     user-select: none;
+  }
+  .panelSep {
+    margin-left: 8px;
   }
   .panelButton {
     display: inline-block;
